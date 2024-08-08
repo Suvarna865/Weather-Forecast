@@ -1,0 +1,94 @@
+mkdir weather-app
+cd weather-app
+npm init -y
+npm install express
+const express = require('express');
+const fetch = require('node-fetch');
+const app = express();
+const PORT = process.env.PORT || 5000;
+
+app.use(express.json());
+
+// Endpoint to fetch weather data
+app.post('/weather', async (req, res) => {
+  const { location } = req.body;
+  const apiKey = 'YOUR_OPENWEATHER_API_KEY'; // Replace with your OpenWeather API key
+  const url = `https://api.openweathermap.org/data/2.5/forecast?q=${location}&units=metric&cnt=5&appid=${apiKey}`;
+
+  try {
+    const response = await fetch(url);
+    const data = await response.json();
+    if (data.cod === '200') {
+      res.json(data);
+    } else {
+      res.status(400).json({ error: 'Location not found' });
+    }
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch weather data' });
+  }
+});
+
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+npx create-react-app client
+cd client
+npm install axios
+import React, { useState } from 'react';
+import axios from 'axios';
+
+function App() {
+  const [location, setLocation] = useState('');
+  const [forecast, setForecast] = useState(null);
+  const [error, setError] = useState('');
+
+  const fetchWeather = async () => {
+    try {
+      const response = await axios.post('http://localhost:5000/weather', { location });
+      setForecast(response.data);
+      setError('');
+    } catch (err) {
+      setError('Could not fetch weather data');
+    }
+  };
+
+  const handleDetectLocation = () => {
+    navigator.geolocation.getCurrentPosition(async (position) => {
+      const { latitude, longitude } = position.coords;
+      const response = await axios.post('http://localhost:5000/weather', { location: `${latitude},${longitude}` });
+      setForecast(response.data);
+    }, (error) => {
+      setError('Failed to detect location');
+    });
+  };
+
+  return (
+    <div>
+      <h1>Weather Forecast</h1>
+      <input
+        type="text"
+        value={location}
+        onChange={(e) => setLocation(e.target.value)}
+        placeholder="Enter location"
+      />
+      <button onClick={fetchWeather}>Get Forecast</button>
+      <button onClick={handleDetectLocation}>Detect Location</button>
+      {error && <p>{error}</p>}
+      {forecast && (
+        <div>
+          <h2>Forecast for {forecast.city.name}</h2>
+          <ul>
+            {forecast.list.map((day, index) => (
+              <li key={index}>
+                {new Date(day.dt_txt).toLocaleDateString()}: {day.weather[0].description}, Temp: {day.main.temp}°C
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default App;
+"proxy": "http://localhost:5000",
+node index.js
+npm start
